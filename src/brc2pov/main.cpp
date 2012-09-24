@@ -23,6 +23,8 @@ public:
 
 class Branch {
 public:
+    int branchLevel() const { return branch_level; }
+    void setBranchLevel(int level) { branch_level = level; }
     bool empty() const { return nodeList.empty(); }
     void append(const Node& node) { nodeList.append(node); }
     void clear() { nodeList.clear(); }
@@ -34,6 +36,7 @@ private:
     void print(const QVector<Node>& nodes, const char* spline_method, const char* texture, const char* scale) const;
     
 private:
+    int branch_level;
     QVector<Node> nodeList;
 };
 
@@ -93,10 +96,14 @@ void Branch::print(const QVector<Node>& nodes, const char* spline_method, const 
 
 int main(int argc, char* argv[])
 {
-    if (argc != 6) {
-        printf("Usage: brc2pov.exe filename.brc cubic[linear] texture.jpg scale simp_threshold");
+    if (argc != 7) {
+        printf("Usage: brc2pov.exe filename.brc cubic[linear] texture.jpg scale simp_threshold min_branch_level,max_branch_level");
         exit(-1);
     }
+
+    QStringList branch_levels = QString(argv[6]).split(",");
+    int min_branch_level = branch_levels.at(0).toInt();
+    int max_branch_level = branch_levels.at(1).toInt();
 
     QFile brcfile(argv[1]);
     if (!brcfile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -111,16 +118,22 @@ int main(int argc, char* argv[])
         if (items.empty())
             continue;
         if (items[0] == "g") {
-            if (!branch.empty()) {
+            if (!branch.empty() && branch.branchLevel() >= min_branch_level && branch.branchLevel() <= max_branch_level) {
                 branch.print(argv[2], argv[3], argv[4], QString(argv[5]).toFloat());
             }
             branch.clear();
+        }
+        if (items[0] == "p") {
+            branch.setBranchLevel(items[5].toInt());
         }
         if (items[0] == "v") {
             branch.append(Node(items[1].toFloat(), items[2].toFloat(), items[3].toFloat(), items[4].toFloat()));
         }
     }
-    branch.print(argv[2], argv[3], argv[4], QString(argv[5]).toFloat());
+
+    if (branch.branchLevel() >= min_branch_level && branch.branchLevel() <= max_branch_level) {
+        branch.print(argv[2], argv[3], argv[4], QString(argv[5]).toFloat());
+    }
 
     brcfile.close();
     return 0;
